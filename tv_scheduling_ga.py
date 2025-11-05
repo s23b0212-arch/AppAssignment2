@@ -5,25 +5,36 @@ import random
 # Set page configuration
 st.set_page_config(page_title="TV Program Scheduler", layout="wide")
 
-# Apply custom CSS for styling
+# Custom CSS for styling
 st.markdown("""
     <style>
-    /* Background color for the sidebar */
+    /* Sidebar background */
     [data-testid="stSidebar"] {
-        background-color: #FFDAB9;  /* Light orange */
+        background-color: #d4edda;  /* Light green */
+        padding-left: 2rem;  /* push content to the right */
     }
 
-    /* Background color for the main content area */
+    /* Main content background */
     .main .block-container {
-        background-color: #FFEFD5;  /* Lighter orange for main content */
+        background-color: #e6ffe6;  /* lighter green */
         padding: 2rem;
         border-radius: 10px;
     }
 
-    /* Title styling */
-    h1 {
-        text-align: center;
-        color: #1E88E5;
+    /* Bold all headings */
+    h1, h2, h3, h4, h5, h6 {
+        font-weight: bold;
+    }
+
+    /* Bold other texts in main content */
+    p, label {
+        font-weight: bold;
+    }
+
+    /* Push sliders to the right */
+    div[data-baseweb="slider"] {
+        margin-left: auto;
+        margin-right: 0;
     }
     </style>
 """, unsafe_allow_html=True)
