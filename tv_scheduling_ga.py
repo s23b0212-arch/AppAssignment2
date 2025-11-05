@@ -5,7 +5,15 @@ import random
 # ------------------ PAGE CONFIG ------------------
 st.set_page_config(page_title="TV Program Scheduler", layout="wide")
 
-
+# ------------------ CUSTOM CSS ------------------
+st.markdown("""
+    <style>
+    /* Main background color (beige) */
+    .main .block-container {
+        background-color: #f5f5dc;
+        padding: 2rem;
+        border-radius: 10px;
+    }
 
     /* Title: Centered with blur effect */
     h1 {
