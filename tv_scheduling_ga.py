@@ -4,21 +4,23 @@ import random
 
 st.set_page_config(page_title="TV Program Scheduler", layout="wide")
 
+# Custom header
 st.markdown("""
     <h1 style='text-align:center; color:#1E88E5;'>TV Program Scheduler - Genetic Algorithm</h1>
     <p style='text-align:center; color:#555;'>Optimize your daily broadcast schedule for maximum viewer ratings</p>
 """, unsafe_allow_html=True)
 
-# Upload CSV
+# Upload CSV file
 uploaded_file = st.file_uploader("Upload your CSV file with program ratings", type=["csv"])
 
-# Sidebar for GA parameters
-st.sidebar.header("Genetic Algorithm Parameters")
-CO_R = st.sidebar.slider("Crossover Rate", 0.0, 0.95, 0.8, 0.01)
-MUT_R = st.sidebar.slider("Mutation Rate", 0.01, 0.05, 0.02, 0.01)
-GEN = st.sidebar.number_input("Generations", 50, 500, 100, 10)
-POP = st.sidebar.number_input("Population Size", 10, 200, 50, 10)
-EL_S = 2
+# Main content layout
+with st.expander("Adjust Genetic Algorithm Parameters"):
+    # Move sliders and inputs here
+    CO_R = st.slider("Crossover Rate", 0.0, 0.95, 0.8, 0.01)
+    MUT_R = st.slider("Mutation Rate", 0.01, 0.05, 0.02, 0.01)
+    GEN = st.number_input("Generations", 50, 500, 100, 10)
+    POP = st.number_input("Population Size", 10, 200, 50, 10)
+    EL_S = 2  # Elitism size is kept constant as it was in the original code
 
 @st.cache_data
 def read_csv(file):
