@@ -8,6 +8,15 @@ st.set_page_config(page_title="TV Program Scheduler", layout="wide")
 # Custom CSS for styling
 st.markdown("""
     <style>
+    /* Style for Title: Centered with blurred font */
+    h1 {
+        text-align: center;
+        color: #1E88E5;
+        font-size: 40px;
+        font-weight: bold;
+        text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.3); /* Adding blur effect */
+    }
+
     /* Sidebar background */
     [data-testid="stSidebar"] {
         background-color: #d4edda;  /* Light green */
@@ -21,8 +30,14 @@ st.markdown("""
         border-radius: 10px;
     }
 
+    /* Genetic Algorithm Parameters Header: Uppercase & Bold */
+    st.sidebar .css-1v0mbd3 {
+        font-weight: bold;
+        text-transform: uppercase;
+    }
+
     /* Bold all headings */
-    h1, h2, h3, h4, h5, h6 {
+    h2, h3, h4, h5, h6 {
         font-weight: bold;
     }
 
@@ -36,6 +51,25 @@ st.markdown("""
         margin-left: auto;
         margin-right: 0;
     }
+
+    /* Style sliders in sidebar */
+    .stSlider {
+        font-size: 16px;
+        color: #1E88E5;  /* Blue color for sliders */
+    }
+
+    /* Add color to buttons */
+    .stButton button {
+        background-color: #1E88E5;
+        color: white;
+        font-weight: bold;
+    }
+
+    .stButton button:hover {
+        background-color: #1565C0;
+        color: white;
+    }
+
     </style>
 """, unsafe_allow_html=True)
 
@@ -47,7 +81,7 @@ st.markdown("<p style='text-align:center; color:#555;'>Optimize your daily broad
 uploaded_file = st.file_uploader("Upload your CSV file with program ratings", type=["csv"])
 
 # Sidebar for GA parameters
-st.sidebar.header("Genetic Algorithm Parameters")
+st.sidebar.header("GENETIC ALGORITHM PARAMETERS")
 CO_R = st.sidebar.slider("Crossover Rate", 0.0, 0.95, 0.8, 0.01)
 MUT_R = st.sidebar.slider("Mutation Rate", 0.01, 0.05, 0.02, 0.01)
 GEN = st.sidebar.number_input("Generations", 50, 500, 100, 10)
