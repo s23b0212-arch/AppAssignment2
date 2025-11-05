@@ -2,89 +2,117 @@ import streamlit as st
 import pandas as pd
 import random
 
-# ------------------- PAGE CONFIG -------------------
-st.set_page_config(page_title="Charu TV Scheduler", layout="wide")
-st.markdown(
-"""
-<h1 style='text-align:center; color:#e63946; font-size:44px;'>📺 Charu TV Scheduler</h1>
-<p style='text-align:center; color:#555; font-size:18px;'>Optimize broadcast schedule with Genetic Algorithm</p>
-""", unsafe_allow_html=True
-)
+# --- PAGE SETUP ---
+st.set_page_config(page_title="Ultimate TV Scheduler", layout="wide")
 
-# ------------------- CSV UPLOAD -------------------
-uploaded_file = st.file_uploader("Upload your program ratings CSV", type=["csv"])
+# --- STYLING ---
+st.markdown("""
+<style>
+.main-title {
+    text-align: center;
+    color: #FF5722;
+    font-size: 42px;
+    font-weight: 900;
+}
+.subtext {
+    text-align: center;
+    font-size: 18px;
+    color: #333;
+    margin-bottom: 25px;
+}
+.stButton>button {
+    background-color: #FF5722;
+    color: white;
+    border-radius: 10px;
+    height: 3em;
+    width: 100%;
+    font-size: 16px;
+    font-weight: 600;
+}
+.stButton>button:hover {
+    background-color: #E64A19;
+    color: #fff;
+}
+</style>
+<h1 class="main-title">📺 Ultimate TV Scheduler GA</h1>
+<p class="subtext">Maximize your viewers' happiness with optimized scheduling</p>
+""", unsafe_allow_html=True)
+
+# --- CSV UPLOAD ---
+uploaded_file = st.file_uploader("📂 Upload your modified CSV file (program ratings)", type=["csv"])
 
 @st.cache_data
-def load_ratings(file):
+def read_csv_to_dict(file):
     df = pd.read_csv(file)
-    ratings = {row[0]: [float(x) for x in row[1:]] for _, row in df.iterrows()}
+    ratings = {}
+    for i, row in df.iterrows():
+        ratings[row[0]] = [float(x) for x in row[1:]]
     return ratings, df.columns[1:]
 
-# ------------------- GA PARAMETERS -------------------
+# --- SIDEBAR PARAMETERS ---
+st.sidebar.markdown("## ⚙️ Genetic Algorithm Parameters")
+CO_R = st.sidebar.slider("Crossover Rate", 0.0, 0.95, 0.8, 0.01)
+MUT_R = st.sidebar.slider("Mutation Rate", 0.01, 0.05, 0.02, 0.01)
+GEN = st.sidebar.number_input("Generations", 50, 500, 100, 10)
+POP = st.sidebar.number_input("Population Size", 10, 200, 50, 10)
+EL_S = 2
+st.sidebar.markdown("---")
+st.sidebar.info("👈 Adjust parameters and upload CSV to start scheduling.")
+
+# --- FUNCTIONS ---
 if uploaded_file:
-    ratings, time_slots = load_ratings(uploaded_file)
-    programs = list(ratings.keys())
+    ratings, time_slots = read_csv_to_dict(uploaded_file)
+    all_programs = list(ratings.keys())
     hours = list(time_slots)
 
-    with st.expander("⚙️ Adjust Genetic Algorithm Parameters"):
-        CO_R = st.slider("Crossover Rate", 0.0, 0.95, 0.75, 0.01)
-        MUT_R = st.slider("Mutation Rate", 0.01, 0.05, 0.02, 0.01)
-        POP = st.number_input("Population Size", min_value=10, max_value=200, value=50)
-        GEN = st.number_input("Generations", min_value=50, max_value=500, value=120)
-        EL_S = 2
+    def fitness(schedule):
+        return sum([ratings[program][i] for i, program in enumerate(schedule)])
 
-    # ------------------- GA FUNCTIONS -------------------
-    def fitness(sched):
-        return sum([ratings[prog][i] for i, prog in enumerate(sched)])
+    def init_population(size):
+        return [random.sample(all_programs, len(all_programs)) for _ in range(size)]
 
-    def init_pop(progs, size):
-        return [random.sample(progs, len(progs)) for _ in range(size)]
+    def crossover(p1, p2):
+        point = random.randint(1, len(p1)-2)
+        return p1[:point]+p2[point:], p2[:point]+p1[point:]
 
-    def crossover(s1, s2):
-        point = random.randint(1, len(s1) - 2)
-        return s1[:point] + s2[point:], s2[:point] + s1[point:]
+    def mutate(schedule):
+        s = schedule.copy()
+        i = random.randint(0, len(s)-1)
+        s[i] = random.choice(all_programs)
+        return s
 
-    def mutate(sched):
-        new = sched.copy()
-        idx = random.randint(0, len(sched)-1)
-        new[idx] = random.choice(programs)
-        return new
-
-    def run_ga():
-        pop = init_pop(programs, POP)
+    def genetic_algorithm():
+        pop = init_population(POP)
         for _ in range(GEN):
             pop = sorted(pop, key=fitness, reverse=True)
             new_pop = pop[:EL_S]
             while len(new_pop) < POP:
                 p1, p2 = random.choices(pop[:10], k=2)
-                c1, c2 = (crossover(p1, p2) if random.random() < CO_R else (p1.copy(), p2.copy()))
-                if random.random() < MUT_R: c1 = mutate(c1)
-                if random.random() < MUT_R: c2 = mutate(c2)
+                c1, c2 = (p1.copy(), p2.copy())
+                if random.random() < CO_R:
+                    c1, c2 = crossover(p1, p2)
+                if random.random() < MUT_R:
+                    c1 = mutate(c1)
+                    c2 = mutate(c2)
                 new_pop.extend([c1, c2])
             pop = new_pop
-        return max(pop, key=fitness)
+        top_schedules = sorted(pop, key=fitness, reverse=True)[:3]
+        return top_schedules
 
-    # ------------------- RUN TRIALS -------------------
-    if st.button("🚀 Generate Optimal Schedules"):
-        st.markdown("### Results of 3 Trials")
-        trial_data = []
-        schedules = []
-        for i in range(1,4):
-            sched = run_ga()
+    # --- RUN BUTTON ---
+    st.markdown("### 🎬 Generate Optimal Schedule")
+    if st.button("🚀 Run Genetic Algorithm"):
+        top_schedules = genetic_algorithm()
+        for idx, sched in enumerate(top_schedules, start=1):
             total = fitness(sched)
-            schedules.append(sched)
-            trial_data.append({"Trial": i, "Total Rating": total})
-        # Show comparison chart
-        trial_df = pd.DataFrame(trial_data)
-        st.bar_chart(trial_df.set_index("Trial"))
-
-        # Show schedules as colored heatmaps
-        for i, sched in enumerate(schedules):
-            st.markdown(f"#### Trial {i+1} Schedule")
-            df = pd.DataFrame({"Hour": hours, "Program": sched})
-            df["Rating"] = [ratings[prog][idx] for idx, prog in enumerate(sched)]
-            styled = df.style.background_gradient(cmap='YlGnBu', subset=["Rating"])
-            st.dataframe(styled, use_container_width=True)
-
+            st.markdown(f"### 🏆 Top {idx} Schedule | Total Rating: {total:.2f}")
+            df = pd.DataFrame({
+                "Hour": hours[:len(sched)],
+                "Program": sched[:len(hours)]
+            })
+            st.dataframe(df, use_container_width=True)
+            # Bar chart of ratings
+            ratings_list = [ratings[prog][i] for i, prog in enumerate(sched)]
+            st.bar_chart(pd.DataFrame({"Ratings": ratings_list}, index=df["Hour"]))
 else:
-    st.warning("Please upload your CSV file to continue.")
+    st.warning("👆 Please upload a valid CSV file to continue.")
