@@ -2,63 +2,54 @@ import streamlit as st
 import pandas as pd
 import random
 
-# Set page configuration
+# ------------------ PAGE CONFIG ------------------
 st.set_page_config(page_title="TV Program Scheduler", layout="wide")
 
-# Custom CSS for styling
+# ------------------ CUSTOM CSS ------------------
 st.markdown("""
     <style>
-    /* Style for Title: Centered with blurred font */
+    /* Main background color (beige) */
+    .main .block-container {
+        background-color: #f5f5dc;
+        padding: 2rem;
+        border-radius: 10px;
+    }
+
+    /* Title: Centered with blur effect */
     h1 {
         text-align: center;
         color: #1E88E5;
         font-size: 40px;
         font-weight: bold;
-        text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.3); /* Adding blur effect */
+        text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Subtitle */
+    p {
+        text-align: center;
+        color: #555;
+        font-weight: bold;
     }
 
     /* Sidebar background */
     [data-testid="stSidebar"] {
         background-color: #d4edda;  /* Light green */
-        padding-left: 2rem;  /* push content to the right */
+        padding-left: 2rem;
     }
 
-    /* Main content background */
-    .main .block-container {
-        background-color: #e6ffe6;  /* lighter green */
-        padding: 2rem;
-        border-radius: 10px;
-    }
-
-    /* Genetic Algorithm Parameters Header: Uppercase & Bold */
-    st.sidebar .css-1v0mbd3 {
+    /* Sidebar header: Uppercase and bold */
+    .css-1v0mbd3 { 
         font-weight: bold;
         text-transform: uppercase;
     }
 
-    /* Bold all headings */
-    h2, h3, h4, h5, h6 {
-        font-weight: bold;
-    }
-
-    /* Bold other texts in main content */
-    p, label {
-        font-weight: bold;
-    }
-
-    /* Push sliders to the right */
+    /* Push sliders to right */
     div[data-baseweb="slider"] {
         margin-left: auto;
         margin-right: 0;
     }
 
-    /* Style sliders in sidebar */
-    .stSlider {
-        font-size: 16px;
-        color: #1E88E5;  /* Blue color for sliders */
-    }
-
-    /* Add color to buttons */
+    /* Style buttons */
     .stButton button {
         background-color: #1E88E5;
         color: white;
@@ -73,14 +64,14 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Title
+# ------------------ TITLE ------------------
 st.markdown("<h1>TV Program Scheduler - Genetic Algorithm</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align:center; color:#555;'>Optimize your daily broadcast schedule for maximum viewer ratings</p>", unsafe_allow_html=True)
+st.markdown("<p>Optimize your daily broadcast schedule for maximum viewer ratings</p>", unsafe_allow_html=True)
 
-# Upload CSV
+# ------------------ CSV UPLOAD ------------------
 uploaded_file = st.file_uploader("Upload your CSV file with program ratings", type=["csv"])
 
-# Sidebar for GA parameters
+# ------------------ SIDEBAR GA PARAMETERS ------------------
 st.sidebar.header("GENETIC ALGORITHM PARAMETERS")
 CO_R = st.sidebar.slider("Crossover Rate", 0.0, 0.95, 0.8, 0.01)
 MUT_R = st.sidebar.slider("Mutation Rate", 0.01, 0.05, 0.02, 0.01)
@@ -88,7 +79,7 @@ GEN = st.sidebar.number_input("Generations", 50, 500, 100, 10)
 POP = st.sidebar.number_input("Population Size", 10, 200, 50, 10)
 EL_S = 2
 
-# Function to read CSV
+# ------------------ FUNCTIONS ------------------
 @st.cache_data
 def read_csv(file):
     df = pd.read_csv(file)
@@ -96,7 +87,6 @@ def read_csv(file):
     time_slots = df.columns[1:]
     return ratings, list(time_slots)
 
-# GA functions
 def fitness(schedule, ratings):
     return sum(ratings[prog][i] for i, prog in enumerate(schedule))
 
@@ -131,18 +121,30 @@ def genetic_algorithm(all_programs, ratings):
         population = new_pop
     return max(population, key=lambda s: fitness(s, ratings))
 
-# Run GA
+# ------------------ RUN GA ------------------
 if uploaded_file:
     ratings, time_slots = read_csv(uploaded_file)
     all_programs = list(ratings.keys())
+    
     if st.button("Generate Optimal Schedule"):
         schedule = genetic_algorithm(all_programs, ratings)
         total_rating = fitness(schedule, ratings)
+        
+        # Trim if mismatch
         min_len = min(len(schedule), len(time_slots))
         schedule = schedule[:min_len]
         time_slots_trim = time_slots[:min_len]
+        
         df_result = pd.DataFrame({"Hour": time_slots_trim, "Program": schedule})
+        
+        # Style DataFrame with light orange background
+        styled_df = df_result.style.set_properties(**{
+            'background-color': '#FFDAB9',  # light orange
+            'color': 'black',
+            'font-weight': 'bold'
+        })
+        
         st.success(f"Optimal schedule generated! Total Rating: {total_rating:.2f}")
-        st.dataframe(df_result, use_container_width=True)
+        st.dataframe(styled_df, use_container_width=True)
 else:
     st.info("Upload your CSV file to start scheduling.")
