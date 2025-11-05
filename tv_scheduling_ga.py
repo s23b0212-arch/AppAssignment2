@@ -2,26 +2,48 @@ import streamlit as st
 import pandas as pd
 import random
 
+# Set page configuration
 st.set_page_config(page_title="TV Program Scheduler", layout="wide")
 
-# Custom header
+# Apply custom CSS for styling
 st.markdown("""
-    <h1 style='text-align:center; color:#1E88E5;'>TV Program Scheduler - Genetic Algorithm</h1>
-    <p style='text-align:center; color:#555;'>Optimize your daily broadcast schedule for maximum viewer ratings</p>
+    <style>
+    /* Background color for the sidebar */
+    [data-testid="stSidebar"] {
+        background-color: #FFDAB9;  /* Light orange */
+    }
+
+    /* Background color for the main content area */
+    .main .block-container {
+        background-color: #FFEFD5;  /* Lighter orange for main content */
+        padding: 2rem;
+        border-radius: 10px;
+    }
+
+    /* Title styling */
+    h1 {
+        text-align: center;
+        color: #1E88E5;
+    }
+    </style>
 """, unsafe_allow_html=True)
 
-# Upload CSV file
+# Title
+st.markdown("<h1>TV Program Scheduler - Genetic Algorithm</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center; color:#555;'>Optimize your daily broadcast schedule for maximum viewer ratings</p>", unsafe_allow_html=True)
+
+# Upload CSV
 uploaded_file = st.file_uploader("Upload your CSV file with program ratings", type=["csv"])
 
-# Main content layout
-with st.expander("Adjust Genetic Algorithm Parameters"):
-    # Move sliders and inputs here
-    CO_R = st.slider("Crossover Rate", 0.0, 0.95, 0.8, 0.01)
-    MUT_R = st.slider("Mutation Rate", 0.01, 0.05, 0.02, 0.01)
-    GEN = st.number_input("Generations", 50, 500, 100, 10)
-    POP = st.number_input("Population Size", 10, 200, 50, 10)
-    EL_S = 2  # Elitism size is kept constant as it was in the original code
+# Sidebar for GA parameters
+st.sidebar.header("Genetic Algorithm Parameters")
+CO_R = st.sidebar.slider("Crossover Rate", 0.0, 0.95, 0.8, 0.01)
+MUT_R = st.sidebar.slider("Mutation Rate", 0.01, 0.05, 0.02, 0.01)
+GEN = st.sidebar.number_input("Generations", 50, 500, 100, 10)
+POP = st.sidebar.number_input("Population Size", 10, 200, 50, 10)
+EL_S = 2
 
+# Function to read CSV
 @st.cache_data
 def read_csv(file):
     df = pd.read_csv(file)
@@ -29,6 +51,7 @@ def read_csv(file):
     time_slots = df.columns[1:]
     return ratings, list(time_slots)
 
+# GA functions
 def fitness(schedule, ratings):
     return sum(ratings[prog][i] for i, prog in enumerate(schedule))
 
@@ -70,7 +93,6 @@ if uploaded_file:
     if st.button("Generate Optimal Schedule"):
         schedule = genetic_algorithm(all_programs, ratings)
         total_rating = fitness(schedule, ratings)
-        # Trim if mismatch
         min_len = min(len(schedule), len(time_slots))
         schedule = schedule[:min_len]
         time_slots_trim = time_slots[:min_len]
