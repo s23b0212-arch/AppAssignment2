@@ -1,152 +1,114 @@
-# Streamlit TV Scheduling GA App
 import streamlit as st
 import pandas as pd
-import csv
 import random
 
-st.title("TV Scheduling Optimization Using Genetic Algorithm")
-st.markdown("Adjust GA parameters in the sidebar and see optimized TV schedules.")
+st.set_page_config(page_title="TV Scheduling GA", layout="centered")
+st.title("📺 TV Program Scheduling using Genetic Algorithm")
 
-# ------------------- Sidebar -------------------
-st.sidebar.header("GA Parameters")
-co_r = st.sidebar.slider("Crossover Rate (CO_R)", 0.0, 0.95, 0.8, 0.05)
-mut_r = st.sidebar.slider("Mutation Rate (MUT_R)", 0.01, 0.05, 0.02, 0.01)
-trials = st.sidebar.number_input("Number of Trials", min_value=1, max_value=5, value=3)
+# -------------------- UPLOAD CSV --------------------
+uploaded_file = st.file_uploader("Upload CSV file with program ratings", type=["csv"])
+if uploaded_file is None:
+    st.warning("Please upload a CSV file to continue.")
+    st.stop()
 
-# ------------------- Read CSV -------------------
-@st.cache_data
-def read_csv_to_dict(file_path):
+# -------------------- READ CSV --------------------
+def read_csv_to_dict(file):
+    reader = pd.read_csv(file)
     program_ratings = {}
-    with open(file_path, mode='r', newline='') as file:
-        reader = csv.reader(file)
-        header = next(reader)  # skip header
-        for row in reader:
-            program = row[0]
-            ratings = [float(x) for x in row[1:]]
-            program_ratings[program] = ratings
+    for idx, row in reader.iterrows():
+        program = row[0]
+        ratings = [float(x) for x in row[1:]]
+        program_ratings[program] = ratings
     return program_ratings
 
-file_path = 'program_ratings.csv'  # Upload your CSV in the same folder
-ratings = read_csv_to_dict(file_path)
+ratings = read_csv_to_dict(uploaded_file)
 all_programs = list(ratings.keys())
 all_time_slots = list(range(6, 24))
 
-# ------------------- GA Functions -------------------
-GEN = 100
-POP = 50
-EL_S = 2
+# -------------------- SLIDERS FOR PARAMETERS --------------------
+st.sidebar.header("Genetic Algorithm Parameters")
+CO_R = st.sidebar.slider("Crossover Rate", min_value=0.0, max_value=0.95, value=0.8, step=0.01)
+MUT_R = st.sidebar.slider("Mutation Rate", min_value=0.01, max_value=0.05, value=0.02, step=0.01)
+GEN = st.sidebar.number_input("Number of Generations", min_value=10, max_value=500, value=100, step=10)
+POP = st.sidebar.number_input("Population Size", min_value=10, max_value=100, value=50, step=5)
+EL_S = st.sidebar.number_input("Elitism Size", min_value=1, max_value=10, value=2, step=1)
 
+# -------------------- FITNESS FUNCTION --------------------
 def fitness_function(schedule):
-    total_rating = 0
-    for time_slot, program in enumerate(schedule):
-        total_rating += ratings[program][time_slot]
-    return total_rating
+    return sum(ratings[program][i] for i, program in enumerate(schedule))
 
-def initialize_pop(programs, time_slots):
-    if not programs:
-        return [[]]
+# -------------------- INITIAL POPULATION --------------------
+def initialize_pop(programs):
     all_schedules = []
-    for i in range(len(programs)):
-        for schedule in initialize_pop(programs[:i] + programs[i + 1:], time_slots):
-            all_schedules.append([programs[i]] + schedule)
-    return all_schedules
+    def permute(progs):
+        if not progs:
+            return [[]]
+        result = []
+        for i in range(len(progs)):
+            for p in permute(progs[:i]+progs[i+1:]):
+                result.append([progs[i]] + p)
+        return result
+    return permute(programs)
 
 def finding_best_schedule(all_schedules):
     best_schedule = []
-    max_ratings = 0
-    for schedule in all_schedules:
-        total_ratings = fitness_function(schedule)
-        if total_ratings > max_ratings:
-            max_ratings = total_ratings
-            best_schedule = schedule
+    max_rating = 0
+    for s in all_schedules:
+        f = fitness_function(s)
+        if f > max_rating:
+            max_rating = f
+            best_schedule = s
     return best_schedule
 
-def crossover(schedule1, schedule2):
-    crossover_point = random.randint(1, len(schedule1) - 2)
-    child1 = schedule1[:crossover_point] + schedule2[crossover_point:]
-    child2 = schedule2[:crossover_point] + schedule1[crossover_point:]
-    return child1, child2
+# -------------------- GENETIC ALGORITHM --------------------
+def crossover(s1, s2):
+    point = random.randint(1, len(s1)-2)
+    return s1[:point]+s2[point:], s2[:point]+s1[point:]
 
 def mutate(schedule):
-    mutation_point = random.randint(0, len(schedule) - 1)
-    new_program = random.choice(all_programs)
-    schedule[mutation_point] = new_program
+    idx = random.randint(0, len(schedule)-1)
+    schedule[idx] = random.choice(all_programs)
     return schedule
 
-def genetic_algorithm(initial_schedule, generations=GEN, population_size=POP, crossover_rate=co_r, mutation_rate=mut_r, elitism_size=EL_S):
-    population = [initial_schedule]
-    for _ in range(population_size - 1):
-        random_schedule = initial_schedule.copy()
-        random.shuffle(random_schedule)
-        population.append(random_schedule)
-
-    for generation in range(generations):
-        new_population = []
+def genetic_algorithm(initial_schedule, generations=GEN, population_size=POP, crossover_rate=CO_R, mutation_rate=MUT_R, elitism_size=EL_S):
+    population = [initial_schedule.copy()]
+    for _ in range(population_size-1):
+        temp = initial_schedule.copy()
+        random.shuffle(temp)
+        population.append(temp)
+    
+    for _ in range(generations):
+        new_pop = []
         population.sort(key=lambda s: fitness_function(s), reverse=True)
-        new_population.extend(population[:elitism_size])
-
-        while len(new_population) < population_size:
-            parent1, parent2 = random.choices(population, k=2)
+        new_pop.extend(population[:elitism_size])
+        
+        while len(new_pop) < population_size:
+            p1, p2 = random.choices(population, k=2)
             if random.random() < crossover_rate:
-                child1, child2 = crossover(parent1, parent2)
+                c1, c2 = crossover(p1, p2)
             else:
-                child1, child2 = parent1.copy(), parent2.copy()
+                c1, c2 = p1.copy(), p2.copy()
             if random.random() < mutation_rate:
-                child1 = mutate(child1)
+                c1 = mutate(c1)
             if random.random() < mutation_rate:
-                child2 = mutate(child2)
-            new_population.extend([child1, child2])
-
-        population = new_population
-
+                c2 = mutate(c2)
+            new_pop.extend([c1, c2])
+        population = new_pop[:population_size]
     return population[0]
 
-# ------------------- Run GA -------------------
-all_possible_schedules = initialize_pop(all_programs, all_time_slots)
-initial_best_schedule = finding_best_schedule(all_possible_schedules)
+# -------------------- RUN GA --------------------
+all_possible_schedules = initialize_pop(all_programs)
+initial_best = finding_best_schedule(all_possible_schedules)
+rem_slots = len(all_time_slots) - len(initial_best)
+ga_schedule = genetic_algorithm(initial_best)
+final_schedule = initial_best + ga_schedule[:rem_slots]
 
-st.header("Optimized Schedules")
-ratings_list = []
+# -------------------- DISPLAY RESULTS --------------------
+st.subheader("✅ Final Optimal Schedule")
+schedule_df = pd.DataFrame({
+    "Time Slot": [f"{h}:00" for h in all_time_slots],
+    "Program": final_schedule
+})
+st.table(schedule_df)
 
-for t in range(trials):
-    ga_schedule = genetic_algorithm(initial_best_schedule)
-    
-    # Adjust schedule length
-    if len(ga_schedule) < len(all_time_slots):
-        ga_schedule += ga_schedule[:len(all_time_slots) - len(ga_schedule)]
-    elif len(ga_schedule) > len(all_time_slots):
-        ga_schedule = ga_schedule[:len(all_time_slots)]
-
-    schedule_df = pd.DataFrame({
-        "Time Slot": [f"{h}:00" for h in all_time_slots],
-        "Program": ga_schedule
-    })
-
-    st.subheader(f"Trial {t+1}")
-    st.table(schedule_df)
-    total = fitness_function(ga_schedule)
-    st.write("Total Ratings:", total)
-    ratings_list.append(total)
-
-# ------------------- Bar Chart -------------------
-st.header("Total Ratings Across Trials")
-st.bar_chart(pd.DataFrame({"Total Ratings": ratings_list}, index=[f"Trial {i+1}" for i in range(trials)]))
-
-# ------------------- Optional: Color-coded Table -------------------
-def color_program(program):
-    colors = {
-        "news": "background-color: lightblue",
-        "live_soccer": "background-color: lightgreen",
-        "movie_a": "background-color: lightpink",
-        "movie_b": "background-color: lightyellow",
-        "reality_show": "background-color: lightgray",
-        "tv_series_a": "background-color: lightcoral",
-        "tv_series_b": "background-color: lightcyan",
-        "music_program": "background-color: lightgoldenrodyellow",
-        "documentary": "background-color: lightsteelblue",
-        "Boxing": "background-color: lightsalmon"
-    }
-    return colors.get(program, "")
-
-st.subheader("Trial 1 Color-coded Schedule")
-st.dataframe(schedule_df.style.applymap(color_program, subset=['Program']))
+st.write("**Total Ratings:**", fitness_function(final_schedule))
