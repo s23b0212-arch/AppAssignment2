@@ -1,18 +1,20 @@
 import streamlit as st
 import pandas as pd
-import random
 import csv
+import random
 
 st.title("TV Scheduling Genetic Algorithm")
 
-# ------------------ Upload CSV ------------------
+# ---------------- CSV UPLOAD ----------------
 uploaded_file = st.file_uploader("Upload your program_ratings.csv", type="csv")
+
 if uploaded_file:
 
-    # Read CSV safely
+    # ---------------- LOAD RATINGS ----------------
     def load_ratings(file):
         program_ratings = {}
-        reader = csv.reader(file.read().decode("utf-8").splitlines())
+        lines = file.read().decode('utf-8').splitlines()
+        reader = csv.reader(lines)
         header = next(reader)
         for row in reader:
             if len(row) < 2:
@@ -26,7 +28,7 @@ if uploaded_file:
     all_programs = list(ratings.keys())
     all_time_slots = list(range(6, 24))  # 18 slots
 
-    # ------------------ GA Parameters ------------------
+    # ---------------- GA PARAMETERS ----------------
     st.sidebar.header("Genetic Algorithm Parameters")
     CO_R = st.sidebar.slider("Crossover Rate", 0.0, 0.95, 0.8, 0.05)
     MUT_R = st.sidebar.slider("Mutation Rate", 0.01, 0.05, 0.02, 0.01)
@@ -34,7 +36,7 @@ if uploaded_file:
     POP = st.sidebar.number_input("Population Size", min_value=10, max_value=200, value=50, step=5)
     EL_S = st.sidebar.number_input("Elitism Size", min_value=1, max_value=10, value=2, step=1)
 
-    # ------------------ GA Functions ------------------
+    # ---------------- GA FUNCTIONS ----------------
     def fitness(schedule):
         return sum(ratings[schedule[i]][i] for i in range(len(all_time_slots)))
 
@@ -48,7 +50,7 @@ if uploaded_file:
         return s1[:point]+s2[point:], s2[:point]+s1[point:]
 
     def genetic_algorithm(initial):
-        # Ensure population size
+        # Create initial population
         population = []
         for _ in range(POP):
             temp = initial.copy()
@@ -71,12 +73,10 @@ if uploaded_file:
             population = new_pop[:POP]
 
         best = max(population, key=fitness)
-        # Ensure exactly 18 slots
         return best[:len(all_time_slots)]
 
-    # ------------------ Run GA ------------------
+    # ---------------- RUN GA ----------------
     if st.button("Run Genetic Algorithm"):
-        # initial schedule (repeat programs to cover 18 slots)
         initial_schedule = []
         while len(initial_schedule) < len(all_time_slots):
             initial_schedule.extend(all_programs)
@@ -85,11 +85,11 @@ if uploaded_file:
 
         ga_schedule = genetic_algorithm(initial_schedule)
 
+        # Display schedule
         schedule_df = pd.DataFrame({
             "Time Slot": [f"{h}:00" for h in all_time_slots],
             "Program": ga_schedule
         })
-
         st.subheader("Optimized TV Schedule")
         st.table(schedule_df)
         st.write("Total Ratings:", round(fitness(ga_schedule),2))
