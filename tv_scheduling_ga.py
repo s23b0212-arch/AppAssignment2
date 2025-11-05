@@ -4,22 +4,25 @@ import random
 
 st.set_page_config(page_title="TV Program Scheduler", layout="wide")
 
+# --- HEADER ---
 st.markdown("""
-    <h1 style='text-align:center; color:#1E88E5;'>TV Program Scheduler - Genetic Algorithm</h1>
-    <p style='text-align:center; color:#555;'>Optimize your daily broadcast schedule for maximum viewer ratings</p>
+    <h1 style='text-align:center; color:#1E88E5; font-size:45px;'>TV Program Scheduler</h1>
+    <p style='text-align:center; color:#555; font-size:18px;'>Optimize your broadcast schedule for maximum viewer ratings using Genetic Algorithm</p>
 """, unsafe_allow_html=True)
 
-# Upload CSV
-uploaded_file = st.file_uploader("Upload your CSV file with program ratings", type=["csv"])
+# --- FILE UPLOAD ---
+uploaded_file = st.file_uploader("📂 Upload your CSV file with program ratings", type=["csv"])
 
-# Sidebar for GA parameters
-st.sidebar.header("Genetic Algorithm Parameters")
+# --- SIDEBAR PARAMETERS ---
+st.sidebar.header("⚙️ GA Parameters")
 CO_R = st.sidebar.slider("Crossover Rate", 0.0, 0.95, 0.8, 0.01)
 MUT_R = st.sidebar.slider("Mutation Rate", 0.01, 0.05, 0.02, 0.01)
 GEN = st.sidebar.number_input("Generations", 50, 500, 100, 10)
 POP = st.sidebar.number_input("Population Size", 10, 200, 50, 10)
 EL_S = 2
+st.sidebar.info("Adjust parameters and upload your CSV to start scheduling.")
 
+# --- READ CSV ---
 @st.cache_data
 def read_csv(file):
     df = pd.read_csv(file)
@@ -27,9 +30,11 @@ def read_csv(file):
     time_slots = df.columns[1:]
     return ratings, list(time_slots)
 
+# --- FITNESS FUNCTION ---
 def fitness(schedule, ratings):
     return sum(ratings[prog][i] for i, prog in enumerate(schedule))
 
+# --- GA FUNCTIONS ---
 def initialize_population(programs, size):
     return [random.sample(programs, len(programs)) for _ in range(size)]
 
@@ -61,19 +66,34 @@ def genetic_algorithm(all_programs, ratings):
         population = new_pop
     return max(population, key=lambda s: fitness(s, ratings))
 
-# Run GA
+# --- RUN GA ---
 if uploaded_file:
     ratings, time_slots = read_csv(uploaded_file)
     all_programs = list(ratings.keys())
-    if st.button("Generate Optimal Schedule"):
+    
+    if st.button("🚀 Generate Optimal Schedule"):
         schedule = genetic_algorithm(all_programs, ratings)
         total_rating = fitness(schedule, ratings)
+
         # Trim if mismatch
         min_len = min(len(schedule), len(time_slots))
         schedule = schedule[:min_len]
         time_slots_trim = time_slots[:min_len]
+
+        # Result DataFrame
         df_result = pd.DataFrame({"Hour": time_slots_trim, "Program": schedule})
-        st.success(f"Optimal schedule generated! Total Rating: {total_rating:.2f}")
-        st.dataframe(df_result, use_container_width=True)
+
+        # --- COLORFUL STYLING ---
+        colors = ["#FFCDD2","#C5E1A5","#BBDEFB","#FFE082","#F8BBD0","#B2EBF2",
+                  "#D1C4E9","#FFF59D","#A7FFEB","#FFAB91"]
+        program_colors = {prog: colors[i % len(colors)] for i, prog in enumerate(all_programs)}
+
+        def highlight_row(prog):
+            return [f'background-color: {program_colors.get(prog, "#E0E0E0")}' for prog in df_result["Program"]]
+
+        # --- DISPLAY RESULTS ---
+        st.success(f"✅ Optimal schedule generated! Total Rating: {total_rating:.2f}")
+        st.dataframe(df_result.style.apply(highlight_row, axis=1), use_container_width=True)
+
 else:
-    st.info("Upload your CSV file to start scheduling.")
+    st.info("👆 Upload your CSV file to start scheduling.")
