@@ -183,3 +183,4 @@ if uploaded_file is not None:
         st.success("🎉 The Genetic Algorithm has successfully generated an optimal schedule!")
 else:
     st.warning("⚠️ Please upload a CSV file to begin.")
+
